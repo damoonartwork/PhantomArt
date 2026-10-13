@@ -15,6 +15,10 @@ jobs:
           go-version-file: go.mod
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
+      - name: Check server scripts
+        run: |
+          node --check server/cloudflare-worker/worker.js
+          bash -n server/vps/install.sh
       - name: Download Xray-core for integration tests
         run: |
           mkdir -p "$RUNNER_TEMP/xray"

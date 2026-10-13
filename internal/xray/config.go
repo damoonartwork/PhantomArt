@@ -15,6 +15,7 @@ type Options struct {
 	AllowLAN   bool // listen on 0.0.0.0 instead of 127.0.0.1
 	BypassIran bool // route Iranian domains/IPs directly
 	BlockAds   bool
+	Fragment   bool   // split the TLS ClientHello to evade SNI filtering
 	LogLevel   string // debug, info, warning, error, none
 }
 
@@ -32,6 +33,21 @@ func Build(p *link.Profile, opt Options) ([]byte, error) {
 	}
 	sniffing := obj{"enabled": true, "destOverride": []string{"http", "tls", "quic"}, "routeOnly": true}
 
+	outbounds := []obj{
+		out,
+		{"tag": "direct", "protocol": "freedom", "settings": obj{}},
+		{"tag": "block", "protocol": "blackhole", "settings": obj{}},
+	}
+	if opt.Fragment && p.Security == "tls" {
+		out["streamSettings"].(obj)["sockopt"] = obj{"dialerProxy": "fragment"}
+		outbounds = append(outbounds, obj{
+			"tag":            "fragment",
+			"protocol":       "freedom",
+			"settings":       obj{"fragment": obj{"packets": "tlshello", "length": "100-200", "interval": "10-20"}},
+			"streamSettings": obj{"sockopt": obj{"tcpNoDelay": true}},
+		})
+	}
+
 	cfg := obj{
 		"log": obj{"loglevel": orDefault(opt.LogLevel, "warning")},
 		"inbounds": []obj{
@@ -44,11 +60,7 @@ func Build(p *link.Profile, opt Options) ([]byte, error) {
 				"settings": obj{}, "sniffing": sniffing,
 			},
 		},
-		"outbounds": []obj{
-			out,
-			{"tag": "direct", "protocol": "freedom", "settings": obj{}},
-			{"tag": "block", "protocol": "blackhole", "settings": obj{}},
-		},
+		"outbounds": outbounds,
 		"routing": obj{
 			// AsIs: never resolve domains locally, so DNS queries are not
 			// leaked to (or poisoned by) the local network.

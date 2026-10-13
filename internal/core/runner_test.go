@@ -38,7 +38,7 @@ func TestXrayAcceptsGeneratedConfigs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cfg, err := xray.Build(p, xray.Options{SocksPort: 20808, HTTPPort: 20809, BypassIran: true, BlockAds: true})
+		cfg, err := xray.Build(p, xray.Options{SocksPort: 20808, HTTPPort: 20809, BypassIran: true, BlockAds: true, Fragment: true})
 		if err != nil {
 			t.Fatal(err)
 		}

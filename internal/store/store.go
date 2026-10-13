@@ -19,6 +19,7 @@ type Settings struct {
 	AllowLAN    bool   `json:"allowLan"`
 	BypassIran  bool   `json:"bypassIran"`
 	BlockAds    bool   `json:"blockAds"`
+	Fragment    bool   `json:"fragment"`
 	LogLevel    string `json:"logLevel"`
 }
 
@@ -43,6 +44,7 @@ func DefaultSettings() Settings {
 		HTTPPort:    10809,
 		SystemProxy: true,
 		BypassIran:  true,
+		Fragment:    true,
 		LogLevel:    "warning",
 	}
 }

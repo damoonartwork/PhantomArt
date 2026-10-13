@@ -11,10 +11,19 @@
 - **سابسکریپشن** (base64 یا متن ساده) — وقتی متصل هستید، به‌روزرسانی از داخل تونل انجام می‌شود
 - تنظیم خودکار **پروکسی سیستم ویندوز** و برگرداندن آن هنگام قطع/بستن برنامه
 - **مسیریابی هوشمند**: سایت‌ها و IPهای ایرانی مستقیم باز می‌شوند (`geosite:category-ir`، `geoip:ir`)
+- **فرگمنت (Fragment)**: تکه‌تکه کردن TLS ClientHello برای دور زدن فیلتر SNI
 - مسدود کردن تبلیغات (اختیاری)
 - پینگ TCP همه سرورها و تست واقعی اتصال از داخل تونل
 - رابط کاربری فارسی (راست‌به‌چپ)
 - پروسه‌ی Xray به برنامه گره خورده؛ اگر برنامه کرش کند، Xray هم بسته می‌شود
+
+## سرور
+
+برنامه به یک سرور خارج از کشور نیاز دارد. راهنمای قدم‌به‌قدم (فارسی، بدون نیاز به برنامه‌نویسی) در
+[`server/README.md`](server/README.md) است:
+
+- **رایگان:** سرور روی Cloudflare Workers ([`server/cloudflare-worker/worker.js`](server/cloudflare-worker/worker.js))
+- **VPS:** نصب VLESS + Reality با یک دستور ([`server/vps/install.sh`](server/vps/install.sh))
 
 ## ساختار پروژه
 
@@ -27,6 +36,7 @@ internal/core/            اجرا و مدیریت پروسه‌ی xray.exe
 internal/sysproxy/        تنظیم پروکسی سیستم (ویندوز)
 internal/store/           ذخیره‌ی سرورها و تنظیمات در %APPDATA%\PhantomArt
 internal/subscription/    دانلود سابسکریپشن، پینگ و تست اتصال
+server/                   سرور: Cloudflare Worker و اسکریپت نصب VPS
 ```
 
 ## ساخت (Build) روی ویندوز

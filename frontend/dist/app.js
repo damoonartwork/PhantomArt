@@ -118,7 +118,7 @@ function render() {
   const form = $("#settingsForm");
   if (!form.contains(document.activeElement)) {
     const set = s.settings;
-    for (const k of ["systemProxy", "bypassIran", "blockAds", "allowLan"]) form.elements[k].checked = !!set[k];
+    for (const k of ["systemProxy", "bypassIran", "blockAds", "fragment", "allowLan"]) form.elements[k].checked = !!set[k];
     form.elements.systemProxy.disabled = !s.sysProxySupported;
     form.elements.socksPort.value = set.socksPort;
     form.elements.httpPort.value = set.httpPort;
@@ -214,6 +214,7 @@ function bind() {
       allowLan: f.allowLan.checked,
       bypassIran: f.bypassIran.checked,
       blockAds: f.blockAds.checked,
+      fragment: f.fragment.checked,
       logLevel: f.logLevel.value,
     };
     document.activeElement.blur();

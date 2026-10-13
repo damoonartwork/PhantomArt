@@ -188,6 +188,7 @@ func (a *App) Connect() error {
 		AllowLAN:   set.AllowLAN,
 		BypassIran: set.BypassIran,
 		BlockAds:   set.BlockAds,
+		Fragment:   set.Fragment,
 		LogLevel:   set.LogLevel,
 	})
 	if err != nil {
