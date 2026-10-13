@@ -1,37 +1,117 @@
 #!/usr/bin/env bash
 # PhantomArt server installer: Xray-core with VLESS + Reality + XTLS-Vision.
-# Run on a fresh Ubuntu/Debian VPS as root:
+# Run on an Ubuntu/Debian VPS as root:
 #   bash <(curl -fsSL https://raw.githubusercontent.com/damoonartwork/PhantomArt/claude/filter-breaker-app-hn2o05/server/vps/install.sh)
 #
+# Safe on servers that already run other things: everything lives in its own
+# directory (/usr/local/phantomart) with its own Xray binary and its own
+# systemd service ("phantomart"). Existing Xray/V2Ray/panel installs and ports
+# are never touched. Running it again just prints the existing link.
+#
 # Optional environment variables:
-#   PORT=443                 listening port
+#   PORT=443                 listening port (default: 443 if free, else a free one)
 #   SNI=www.microsoft.com    site Reality impersonates (must support TLS 1.3)
 #   NAME=PhantomArt          name shown in the client
+#   REGENERATE=1             create new keys/link (the old link stops working)
+#   UNINSTALL=1              remove PhantomArt from this server
 set -euo pipefail
 
-PORT="${PORT:-443}"
+DIR="${DIR:-/usr/local/phantomart}"
 SNI="${SNI:-www.microsoft.com}"
 NAME="${NAME:-PhantomArt}"
-CONFIG="${CONFIG:-/usr/local/etc/xray/config.json}"
-XRAY="${XRAY:-/usr/local/bin/xray}"
-DRY_RUN="${DRY_RUN:-0}" # 1 = only write config (for testing)
+SERVICE=phantomart
+DRY_RUN="${DRY_RUN:-0}" # 1 = no root/apt/systemd/download (for testing)
+
+XRAY="$DIR/xray"
+CONFIG="$DIR/config.json"
+LINKFILE="$DIR/link.txt"
 
 say() { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31mError:\033[0m %s\n' "$*" >&2; exit 1; }
 
+port_free() {
+  if command -v ss >/dev/null; then
+    ! ss -Hltn "sport = :$1" | grep -q .
+  else
+    # No ss: a port is busy if something accepts connections on it.
+    ! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
+  fi
+}
+
+show_link() {
+  local link
+  link="$(cat "$LINKFILE")"
+  echo
+  say "Your config link (saved in $LINKFILE):"
+  echo
+  echo "$link"
+  echo
+  command -v qrencode >/dev/null && qrencode -t ansiutf8 "$link"
+  echo "Copy the link above and use \"افزودن از کلیپ‌بورد\" in PhantomArt (or import it in v2rayN / v2rayNG)."
+}
+
 if [[ "$DRY_RUN" != 1 ]]; then
   [[ $EUID -eq 0 ]] || die "run as root (sudo -i)"
   command -v apt-get >/dev/null || die "only Ubuntu/Debian are supported"
+fi
 
+if [[ "${UNINSTALL:-0}" == 1 ]]; then
+  systemctl disable --now "$SERVICE" 2>/dev/null || true
+  rm -f "/etc/systemd/system/$SERVICE.service"
+  systemctl daemon-reload
+  rm -rf "$DIR"
+  say "PhantomArt removed."
+  exit 0
+fi
+
+# Already installed: keep the same link, just make sure it is running.
+if [[ -f "$CONFIG" && -f "$LINKFILE" && "${REGENERATE:-0}" != 1 ]]; then
+  if [[ "$DRY_RUN" != 1 ]]; then
+    systemctl restart "$SERVICE"
+    sleep 1
+    systemctl is-active --quiet "$SERVICE" || die "service failed to start; see: journalctl -u $SERVICE -n 50"
+  fi
+  say "PhantomArt is already installed and running."
+  show_link
+  exit 0
+fi
+
+if [[ "$DRY_RUN" != 1 ]]; then
   say "Installing packages..."
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -qq
-  apt-get install -y -qq curl openssl qrencode ca-certificates >/dev/null
-
-  say "Installing Xray-core..."
-  bash -c "$(curl -fsSL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install >/dev/null
+  apt-get install -y -qq curl unzip openssl qrencode ca-certificates iproute2 >/dev/null
 fi
-[[ -x "$XRAY" ]] || die "xray not found at $XRAY"
+
+mkdir -p "$DIR"
+chmod 700 "$DIR"
+
+if [[ ! -x "$XRAY" ]]; then
+  case "$(uname -m)" in
+    x86_64 | amd64) ARCH=64 ;;
+    aarch64 | arm64) ARCH=arm64-v8a ;;
+    *) die "unsupported CPU architecture: $(uname -m)" ;;
+  esac
+  say "Downloading Xray-core..."
+  TMP="$(mktemp -d)"
+  curl -fsSL -o "$TMP/xray.zip" "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-$ARCH.zip"
+  unzip -oq "$TMP/xray.zip" xray geoip.dat geosite.dat -d "$DIR"
+  rm -rf "$TMP"
+  chmod 755 "$XRAY"
+fi
+
+# Pick a port that nothing else is using.
+if [[ -z "${PORT:-}" ]]; then
+  for p in 443 8443 2053 2083 2087 2096; do
+    if port_free "$p"; then PORT=$p; break; fi
+  done
+  while [[ -z "${PORT:-}" ]]; do
+    p=$((20000 + RANDOM % 30000))
+    port_free "$p" && PORT=$p
+  done
+elif ! port_free "$PORT"; then
+  die "port $PORT is already in use; choose another with PORT=..."
+fi
 
 say "Generating keys..."
 UUID="$("$XRAY" uuid)"
@@ -43,7 +123,6 @@ PUBLIC_KEY="$(grep -i 'public' <<<"$KEYS" | awk -F': *' '{print $2}' | tr -d '[:
 [[ -n "$PRIVATE_KEY" && -n "$PUBLIC_KEY" ]] || die "could not parse x25519 keys: $KEYS"
 SHORT_ID="$(openssl rand -hex 8)"
 
-mkdir -p "$(dirname "$CONFIG")"
 cat >"$CONFIG" <<EOF
 {
   "log": { "loglevel": "warning" },
@@ -81,37 +160,41 @@ cat >"$CONFIG" <<EOF
   }
 }
 EOF
-"$XRAY" run -test -c "$CONFIG" >/dev/null || die "generated config is invalid"
+chmod 600 "$CONFIG"
+XRAY_LOCATION_ASSET="$DIR" "$XRAY" run -test -c "$CONFIG" >/dev/null || die "generated config is invalid"
 
 if [[ "$DRY_RUN" != 1 ]]; then
-  say "Enabling BBR congestion control..."
-  grep -q 'tcp_congestion_control=bbr' /etc/sysctl.conf 2>/dev/null || {
-    echo 'net.core.default_qdisc=fq' >>/etc/sysctl.conf
-    echo 'net.ipv4.tcp_congestion_control=bbr' >>/etc/sysctl.conf
-  }
-  sysctl -p >/dev/null 2>&1 || true
+  cat >"/etc/systemd/system/$SERVICE.service" <<EOF
+[Unit]
+Description=PhantomArt (Xray VLESS Reality)
+After=network-online.target
+Wants=network-online.target
 
-  if command -v ufw >/dev/null && ufw status | grep -q active; then
+[Service]
+Environment=XRAY_LOCATION_ASSET=$DIR
+ExecStart=$XRAY run -c $CONFIG
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  if command -v ufw >/dev/null && ufw status | grep -q 'Status: active'; then
     ufw allow "$PORT"/tcp >/dev/null
   fi
 
-  say "Starting Xray..."
-  systemctl enable xray >/dev/null 2>&1
-  systemctl restart xray
+  say "Starting PhantomArt service..."
+  systemctl daemon-reload
+  systemctl enable "$SERVICE" >/dev/null 2>&1
+  systemctl restart "$SERVICE"
   sleep 1
-  systemctl is-active --quiet xray || die "xray failed to start; see: journalctl -u xray -n 50"
+  systemctl is-active --quiet "$SERVICE" || die "service failed to start; see: journalctl -u $SERVICE -n 50"
 fi
 
 IP="${IP:-$(curl -fsS4 --max-time 10 https://api.ipify.org || hostname -I | awk '{print $1}')}"
-LINK="vless://$UUID@$IP:$PORT?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$PUBLIC_KEY&sid=$SHORT_ID&type=tcp#$NAME"
-echo "$LINK" >"$(dirname "$CONFIG")/phantomart-link.txt"
+echo "vless://$UUID@$IP:$PORT?encryption=none&flow=xtls-rprx-vision&security=reality&sni=$SNI&fp=chrome&pbk=$PUBLIC_KEY&sid=$SHORT_ID&type=tcp#$NAME" >"$LINKFILE"
 
-echo
-say "Done! Your config link (also saved in $(dirname "$CONFIG")/phantomart-link.txt):"
-echo
-echo "$LINK"
-echo
-if command -v qrencode >/dev/null; then
-  qrencode -t ansiutf8 "$LINK"
-fi
-echo "Copy the link above and use \"افزودن از کلیپ‌بورد\" in PhantomArt."
+say "Done!"
+show_link

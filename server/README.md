@@ -102,7 +102,15 @@ bash <(curl -fsSL https://raw.githubusercontent.com/damoonartwork/PhantomArt/cla
 ### گام ۴: اتصال
 لینک `vless://...` را کپی کنید (با موس انتخاب کنید و راست‌کلیک) و در PhantomArt «افزودن از کلیپ‌بورد» را بزنید.
 
-لینک گم شد؟ دوباره به سرور وصل شوید و بزنید:
-```
-cat /usr/local/etc/xray/phantomart-link.txt
-```
+لینک گم شد؟ همان دستور نصب را دوباره اجرا کنید. چیزی را عوض نمی‌کند و فقط همان لینک قبلی را دوباره نشان می‌دهد.
+
+### نکته‌ها
+- **روی سروری که از قبل استفاده می‌شود هم امن است:** نصب در پوشه‌ی جداگانه (`/usr/local/phantomart`) و با سرویس جداگانه (`phantomart`) انجام می‌شود. Xray یا پنل‌های موجود روی سرور (مثل 3x-ui یا Marzban) و پورت‌هایشان دست نمی‌خورند. اگر پورت ۴۴۳ پر باشد، خودش یک پورت آزاد دیگر انتخاب می‌کند.
+- **ساختن لینک جدید** (لینک قبلی از کار می‌افتد):
+  ```
+  REGENERATE=1 bash <(curl -fsSL https://raw.githubusercontent.com/damoonartwork/PhantomArt/claude/filter-breaker-app-hn2o05/server/vps/install.sh)
+  ```
+- **حذف کامل:**
+  ```
+  UNINSTALL=1 bash <(curl -fsSL https://raw.githubusercontent.com/damoonartwork/PhantomArt/claude/filter-breaker-app-hn2o05/server/vps/install.sh)
+  ```
