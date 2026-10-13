@@ -15,7 +15,7 @@ type Options struct {
 	AllowLAN   bool // listen on 0.0.0.0 instead of 127.0.0.1
 	BypassIran bool // route Iranian domains/IPs directly
 	BlockAds   bool
-	Fragment   bool   // split the TLS ClientHello to evade SNI filtering
+	Fragment   bool   // split the TLS/Reality ClientHello to evade DPI filtering
 	LogLevel   string // debug, info, warning, error, none
 }
 
@@ -38,7 +38,7 @@ func Build(p *link.Profile, opt Options) ([]byte, error) {
 		{"tag": "direct", "protocol": "freedom", "settings": obj{}},
 		{"tag": "block", "protocol": "blackhole", "settings": obj{}},
 	}
-	if opt.Fragment && p.Security == "tls" {
+	if opt.Fragment && (p.Security == "tls" || p.Security == "reality") {
 		out["streamSettings"].(obj)["sockopt"] = obj{"dialerProxy": "fragment"}
 		outbounds = append(outbounds, obj{
 			"tag":            "fragment",

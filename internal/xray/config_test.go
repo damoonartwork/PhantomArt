@@ -98,7 +98,7 @@ func TestBuildShadowsocksAndTrojan(t *testing.T) {
 	}
 }
 
-func TestBuildFragmentOnlyForTLS(t *testing.T) {
+func TestBuildFragmentForTLSAndReality(t *testing.T) {
 	cfg := build(t, "vless://u@cdn.example.com:443?type=ws&security=tls", Options{SocksPort: 1, HTTPPort: 2, Fragment: true})
 	if get(cfg, "outbounds", 0, "streamSettings", "sockopt", "dialerProxy") != "fragment" {
 		t.Error("proxy outbound should dial through the fragment outbound")
@@ -109,7 +109,12 @@ func TestBuildFragmentOnlyForTLS(t *testing.T) {
 	}
 
 	cfg = build(t, "vless://u@h:443?security=reality&pbk=K", Options{SocksPort: 1, HTTPPort: 2, Fragment: true})
+	if get(cfg, "outbounds", 0, "streamSettings", "sockopt", "dialerProxy") != "fragment" {
+		t.Error("reality should also dial through the fragment outbound")
+	}
+
+	cfg = build(t, "ss://aes-256-gcm:pw@h:8388", Options{SocksPort: 1, HTTPPort: 2, Fragment: true})
 	if _, ok := get(cfg, "outbounds", 0, "streamSettings").(map[string]any)["sockopt"]; ok {
-		t.Error("fragment must not apply to reality")
+		t.Error("fragment must not apply without TLS")
 	}
 }
