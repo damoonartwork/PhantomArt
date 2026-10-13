@@ -13,35 +13,49 @@ import { connect } from "cloudflare:sockets";
 
 const WS_OPEN = 1;
 
+const VERSION = "1.1";
+
 export default {
   async fetch(request, env) {
-    const uuid = (env.UUID || "").trim().toLowerCase();
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uuid)) {
-      return new Response("Server is not configured: set the UUID variable.", { status: 500 });
-    }
-
-    if ((request.headers.get("Upgrade") || "").toLowerCase() === "websocket") {
-      return handleVless(request, uuid, env);
-    }
-
-    const url = new URL(request.url);
-    const links = configLinks(url.hostname, uuid, env);
-    if (url.pathname === `/${uuid}/sub`) {
-      return new Response(btoa(links.map((l) => l.link).join("\n")), {
+    try {
+      return await handle(request, env);
+    } catch (e) {
+      // Show the real error instead of Cloudflare's generic "Error 1101" page.
+      return new Response(`PhantomArt ${VERSION} error:\n${(e && e.stack) || e}`, {
+        status: 500,
         headers: { "content-type": "text/plain; charset=utf-8" },
       });
     }
-    if (url.pathname === `/${uuid}`) {
-      return new Response(infoPage(url.hostname, uuid, links), {
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
-    }
-    // Anyone without the UUID just sees an ordinary page.
-    return new Response("<!doctype html><title>Welcome</title><h1>It works!</h1>", {
-      headers: { "content-type": "text/html; charset=utf-8" },
-    });
   },
 };
+
+async function handle(request, env) {
+  const uuid = (env.UUID || "").trim().toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uuid)) {
+    return new Response("Server is not configured: set the UUID variable.", { status: 500 });
+  }
+
+  if ((request.headers.get("Upgrade") || "").toLowerCase() === "websocket") {
+    return handleVless(request, uuid, env);
+  }
+
+  const url = new URL(request.url);
+  const links = configLinks(url.hostname, uuid, env);
+  if (url.pathname === `/${uuid}/sub`) {
+    return new Response(btoa(links.map((l) => l.link).join("\n")), {
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
+  if (url.pathname === `/${uuid}`) {
+    return new Response(infoPage(url.hostname, uuid, links), {
+      headers: { "content-type": "text/html; charset=utf-8" },
+    });
+  }
+  // Anyone without the UUID just sees an ordinary page.
+  return new Response("<!doctype html><title>Welcome</title><h1>It works!</h1>", {
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+}
 
 // ---------------------------------------------------------------- config links
 
@@ -59,14 +73,20 @@ function configLinks(host, uuid, env) {
     return { name, link: `vless://${uuid}@${address}:443?${q}#${encodeURIComponent(name)}` };
   };
   const out = [make(host, "PhantomArt")];
-  for (const ip of (env.CLEAN_IPS || "").split(",").map((s) => s.trim()).filter(Boolean)) {
+  for (const ip of (env.CLEAN_IPS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)) {
     out.push(make(ip.includes(":") && !ip.startsWith("[") ? `[${ip}]` : ip, `PhantomArt ${ip}`));
   }
   return out;
 }
 
 function esc(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+  );
 }
 
 function infoPage(host, uuid, links) {
