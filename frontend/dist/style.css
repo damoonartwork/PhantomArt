@@ -51,7 +51,7 @@ code { direction: ltr; unicode-bidi: embed; background: var(--panel-2); padding:
 .power:hover { border-color: var(--accent); }
 .power.on { border-color: var(--ok); color: var(--ok); box-shadow: 0 0 30px rgba(46,204,143,.25); }
 .power.busy { opacity: .6; cursor: wait; }
-.power-icon { font-size: 48px; }
+.power-icon { width: 52px; height: 52px; display: block; margin: auto; }
 .status { font-weight: 700; }
 .status.on { color: var(--ok); }
 .status.off { color: var(--muted); }

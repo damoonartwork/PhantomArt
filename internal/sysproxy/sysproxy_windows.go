@@ -5,6 +5,7 @@ package sysproxy
 
 import (
 	"syscall"
+	"time"
 
 	"golang.org/x/sys/windows/registry"
 )
@@ -65,7 +66,18 @@ func Disable(server string) error {
 	return nil
 }
 
+// notify tells running programs that the proxy settings changed. The
+// broadcast can stall on some systems, so it never blocks for long; the
+// registry values are already written either way.
 func notify() {
-	internetSetOption.Call(0, internetOptionSettingsChanged, 0, 0)
-	internetSetOption.Call(0, internetOptionRefresh, 0, 0)
+	done := make(chan struct{})
+	go func() {
+		internetSetOption.Call(0, internetOptionSettingsChanged, 0, 0)
+		internetSetOption.Call(0, internetOptionRefresh, 0, 0)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+	}
 }

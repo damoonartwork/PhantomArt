@@ -194,16 +194,19 @@ func (a *App) Connect() error {
 	if err != nil {
 		return err
 	}
-	a.log(fmt.Sprintf("connecting to %s (%s)", p.Name, p.Protocol))
+	a.log(fmt.Sprintf("connecting to %s (%s, fragment=%v)", p.Name, p.Protocol, set.Fragment))
+	a.log("starting xray core: " + a.runner.BinaryPath())
 	if err := a.runner.Start(cfg); err != nil {
 		a.setConnected(false, "")
 		a.clearSystemProxy()
 		return err
 	}
 
+	a.log("xray core started")
 	a.clearSystemProxy()
 	if set.SystemProxy && sysproxy.Supported() {
 		addr := "127.0.0.1:" + strconv.Itoa(set.HTTPPort)
+		a.log("setting Windows system proxy to " + addr)
 		if err := sysproxy.Enable(addr); err != nil {
 			a.log("could not set system proxy: " + err.Error())
 		} else {
