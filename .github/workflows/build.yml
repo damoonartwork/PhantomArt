@@ -1,0 +1,42 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Download Xray-core for integration tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/xray"
+          curl -sSfL -o "$RUNNER_TEMP/xray.zip" https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
+          unzip -q "$RUNNER_TEMP/xray.zip" -d "$RUNNER_TEMP/xray"
+      - name: Test
+        env:
+          PHANTOMART_XRAY_DIR: ${{ runner.temp }}/xray
+        run: go test -race ./internal/...
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        shell: pwsh
+        run: .\scripts\build.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PhantomArt-windows-amd64
+          path: build/PhantomArt

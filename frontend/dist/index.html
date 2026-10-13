@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PhantomArt</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">◈</span>
+      <span>PhantomArt</span>
+    </div>
+
+    <button id="connectBtn" class="power" title="اتصال / قطع">
+      <span class="power-icon">⏻</span>
+    </button>
+    <div id="status" class="status off">قطع</div>
+    <div id="activeName" class="active-name"></div>
+    <button id="testBtn" class="ghost small" disabled>تست اتصال</button>
+    <div id="testResult" class="muted small-text"></div>
+
+    <nav class="tabs">
+      <button data-tab="servers" class="tab active">سرورها</button>
+      <button data-tab="subs" class="tab">سابسکریپشن</button>
+      <button data-tab="settings" class="tab">تنظیمات</button>
+      <button data-tab="logs" class="tab">لاگ</button>
+    </nav>
+  </aside>
+
+  <main>
+    <div id="coreWarning" class="banner hidden">
+      فایل هسته Xray پیدا نشد. فایل <code>xray.exe</code> به همراه <code>geoip.dat</code> و
+      <code>geosite.dat</code> را در این پوشه قرار دهید:
+      <code id="corePath"></code>
+      <button id="openCoreBtn" class="ghost small">باز کردن پوشه</button>
+    </div>
+
+    <section id="tab-servers" class="panel">
+      <div class="toolbar">
+        <button id="pasteBtn">افزودن از کلیپ‌بورد</button>
+        <button id="manualBtn" class="ghost">وارد کردن دستی</button>
+        <button id="pingBtn" class="ghost">پینگ همه</button>
+      </div>
+      <div id="manualBox" class="manual hidden">
+        <textarea id="manualText" rows="4" dir="ltr" placeholder="vless://...  vmess://...  trojan://...  ss://..."></textarea>
+        <button id="manualAdd">افزودن</button>
+      </div>
+      <ul id="profiles" class="list"></ul>
+      <div id="emptyServers" class="empty hidden">
+        هنوز سروری اضافه نشده. لینک کانفیگ (vless / vmess / trojan / ss) را کپی کنید و
+        «افزودن از کلیپ‌بورد» را بزنید.
+      </div>
+    </section>
+
+    <section id="tab-subs" class="panel hidden">
+      <div class="form-row">
+        <input id="subName" placeholder="نام (اختیاری)">
+        <input id="subUrl" dir="ltr" placeholder="https://example.com/sub/...">
+        <button id="subAdd">افزودن</button>
+      </div>
+      <div class="toolbar"><button id="subUpdate" class="ghost">به‌روزرسانی همه</button></div>
+      <ul id="subs" class="list"></ul>
+    </section>
+
+    <section id="tab-settings" class="panel hidden">
+      <form id="settingsForm" class="settings">
+        <label class="check"><input type="checkbox" name="systemProxy"> تنظیم خودکار پروکسی ویندوز</label>
+        <label class="check"><input type="checkbox" name="bypassIran"> سایت‌های ایرانی مستقیم باز شوند (بدون فیلترشکن)</label>
+        <label class="check"><input type="checkbox" name="blockAds"> مسدود کردن تبلیغات</label>
+        <label class="check"><input type="checkbox" name="allowLan"> اجازه اتصال از دستگاه‌های دیگر شبکه (LAN)</label>
+        <label>پورت SOCKS <input type="number" name="socksPort" min="1" max="65535" dir="ltr"></label>
+        <label>پورت HTTP <input type="number" name="httpPort" min="1" max="65535" dir="ltr"></label>
+        <label>سطح لاگ
+          <select name="logLevel" dir="ltr">
+            <option>warning</option><option>info</option><option>debug</option><option>error</option><option>none</option>
+          </select>
+        </label>
+        <button type="submit">ذخیره</button>
+      </form>
+    </section>
+
+    <section id="tab-logs" class="panel hidden">
+      <pre id="logs" dir="ltr"></pre>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
