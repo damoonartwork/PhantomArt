@@ -19,6 +19,7 @@ jobs:
         run: |
           node --check server/cloudflare-worker/worker.js
           bash -n server/vps/install.sh
+          bash -n server/bridge/install.sh
       - name: Download Xray-core for integration tests
         run: |
           mkdir -p "$RUNNER_TEMP/xray"
